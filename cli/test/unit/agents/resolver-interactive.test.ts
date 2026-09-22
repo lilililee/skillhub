@@ -51,7 +51,7 @@ describe('resolveInstallTargets interactive prompt', () => {
       expect(renderedChoices.some(choice => choice.value.agent === 'kiro-cli')).toBe(true)
       expect(renderedChoices.some(choice => choice.value.agent === 'codex')).toBe(true)
       expect(renderedChoices.some(choice => choice.value.agent === 'claude-code')).toBe(true)
-      expect(renderedChoices.some(choice => choice.value.agent === 'cursor')).toBe(true)
+      expect(renderedChoices.map(choice => choice.value.agent)).toEqual(['kiro-cli', 'codex', 'claude-code'])
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -71,10 +71,9 @@ describe('resolveInstallTargets interactive prompt', () => {
     expect(renderedChoices).toEqual([])
   })
 
-  test('renders AStudio by display name when its directory was detected', async () => {
+  test('offers only the three preferred user agents even when other agents are installed', async () => {
     const home = await mkdtemp(join(tmpdir(), 'skillhub-astudio-resolver-'))
     const nativeRootDir = join(home, '.acode', 'skills')
-    const profileRootDir = nativeRootDir.replace(/\\/g, '/')
 
     try {
       await mkdir(nativeRootDir, { recursive: true })
@@ -87,18 +86,18 @@ describe('resolveInstallTargets interactive prompt', () => {
         interactive: true
       })
 
-      expect(renderedChoices[0]?.title).toBe(`AStudio (${profileRootDir})`)
+      expect(renderedChoices.map(choice => choice.value.agent)).toEqual(['kiro-cli', 'codex', 'claude-code'])
     } finally {
       await rm(home, { recursive: true, force: true })
     }
   })
 
-  test('does not render AStudio when .acode skills is a regular file', async () => {
+  test('excludes an occupied preferred skill directory', async () => {
     const home = await mkdtemp(join(tmpdir(), 'skillhub-astudio-file-'))
-    const rootDir = join(home, '.acode', 'skills')
+    const rootDir = join(home, '.kiro', 'skills')
 
     try {
-      await mkdir(join(home, '.acode'), { recursive: true })
+      await mkdir(join(home, '.kiro'), { recursive: true })
       await writeFile(rootDir, 'not a directory')
       await resolveInstallTargets({
         cwd: '/repo',
@@ -109,8 +108,8 @@ describe('resolveInstallTargets interactive prompt', () => {
         interactive: true
       })
 
-      expect(renderedChoices.some(choice => choice.value.agent === 'astudio')).toBe(false)
-      expect(renderedChoices.some(choice => choice.value.agent === 'generic')).toBe(true)
+      expect(renderedChoices.some(choice => choice.value.agent === 'kiro-cli')).toBe(false)
+      expect(renderedChoices.some(choice => choice.value.agent === 'generic')).toBe(false)
     } finally {
       await rm(home, { recursive: true, force: true })
     }
@@ -134,7 +133,7 @@ describe('resolveInstallTargets interactive prompt', () => {
     expect(targets).toEqual([highlighted])
   })
 
-  test('allows selecting generic alongside detected user targets', async () => {
+  test('does not append generic to detected user targets', async () => {
     selectPromptTargets = options => options.choices?.map(choice => choice.value) ?? []
     const codex: AgentCandidate = {
       agent: 'codex',
@@ -142,13 +141,6 @@ describe('resolveInstallTargets interactive prompt', () => {
       scope: 'user',
       source: 'detected'
     }
-    const generic: AgentCandidate = {
-      agent: 'generic',
-      rootDir: '/home/u/.agents/skills',
-      scope: 'user',
-      source: 'fallback'
-    }
-
     const targets = await resolveInstallTargets({
       cwd: '/repo',
       home: '/home/u',
@@ -159,6 +151,6 @@ describe('resolveInstallTargets interactive prompt', () => {
       detected: [codex]
     })
 
-    expect(targets).toEqual([codex, generic])
+    expect(targets).toEqual([codex])
   })
 })

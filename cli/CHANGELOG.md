@@ -1,3 +1,7 @@
+## 0.1.12-header.4
+
+- Limit interactive scope selection to Kiro, Codex, and Claude Code, in that order.
+
 ## 0.1.12-header.3
 
 - Offer all supported agents after an interactive user/project scope selection, including agents whose skill directories do not exist yet.

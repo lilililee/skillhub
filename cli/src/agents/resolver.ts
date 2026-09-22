@@ -5,6 +5,8 @@ import { canonicalizeExistingPath, directoryExists, pathExists } from '../platfo
 import type { AgentCandidate } from './types'
 import { allProfiles, profileMap } from './detector'
 
+const interactiveAgentIds = ['kiro-cli', 'codex', 'claude-code']
+
 export interface ResolveInstallTargetOptions {
   cwd: string
   home?: string | undefined
@@ -77,18 +79,6 @@ async function resolveScopedTargets(
   // makes repeatable --agent awkward for wrappers and automation.
   if (agentList.length > 0) return candidates
 
-  if (scope === 'user' && agentList.length === 0 && options.interactive && !options.json) {
-    candidates = await dedupeByRoot([
-      ...candidates,
-      {
-        agent: 'generic',
-        rootDir: `${scopedHome}/.agents/skills`,
-        scope: 'user',
-        source: 'fallback'
-      }
-    ])
-  }
-
   if (candidates.length === 0) {
     const fallbackRoot = scope === 'user'
       ? `${scopedHome}/.agents/skills`
@@ -112,7 +102,8 @@ async function generateScopedCandidates(
   includeMissing = false
 ): Promise<AgentCandidate[]> {
   const results: AgentCandidate[] = []
-  for (const profile of allProfiles) {
+  const profiles = includeMissing ? interactiveAgentIds.map(id => profileMap.get(id)!) : allProfiles
+  for (const profile of profiles) {
     const roots = scope === 'user' ? profile.userRoots(home) : profile.projectRoots(cwd)
     for (const root of roots) {
       const isDirectory = await directoryExists(root)
