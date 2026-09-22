@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { CliError } from '../shared/errors'
 import { EXIT } from '../shared/constants'
-import { canonicalizeExistingPath, directoryExists } from '../platform/paths'
+import { canonicalizeExistingPath, directoryExists, pathExists } from '../platform/paths'
 import type { AgentCandidate } from './types'
 import { allProfiles, profileMap } from './detector'
 
@@ -64,7 +64,12 @@ async function resolveScopedTargets(
   } else if (options.detected !== undefined) {
     candidates = options.detected.filter(c => c.scope === scope)
   } else {
-    candidates = await generateScopedCandidates(scope, options.cwd, scopedHome)
+    candidates = await generateScopedCandidates(
+      scope,
+      options.cwd,
+      scopedHome,
+      options.interactive && !options.json
+    )
   }
   candidates = await dedupeByRoot(candidates)
 
@@ -103,15 +108,21 @@ async function resolveScopedTargets(
 async function generateScopedCandidates(
   scope: 'user' | 'project',
   cwd: string,
-  home: string
+  home: string,
+  includeMissing = false
 ): Promise<AgentCandidate[]> {
   const results: AgentCandidate[] = []
   for (const profile of allProfiles) {
     const roots = scope === 'user' ? profile.userRoots(home) : profile.projectRoots(cwd)
     for (const root of roots) {
-      if (await directoryExists(root)) {
-        results.push({ agent: profile.id, rootDir: root, scope, source: 'detected' })
-      }
+      const isDirectory = await directoryExists(root)
+      if (!isDirectory && (!includeMissing || await pathExists(root))) continue
+      results.push({
+        agent: profile.id,
+        rootDir: root,
+        scope,
+        source: isDirectory ? 'detected' : 'explicit'
+      })
     }
   }
   return results

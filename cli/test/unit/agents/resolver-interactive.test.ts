@@ -35,6 +35,28 @@ afterEach(() => {
 const { resolveInstallTargets } = await import('../../../src/agents/resolver')
 
 describe('resolveInstallTargets interactive prompt', () => {
+  test('offers supported project agents even when their directories do not exist yet', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'skillhub-empty-project-'))
+
+    try {
+      await resolveInstallTargets({
+        cwd: root,
+        home: '/home/u',
+        agents: [],
+        scope: 'project',
+        json: false,
+        interactive: true
+      })
+
+      expect(renderedChoices.some(choice => choice.value.agent === 'kiro-cli')).toBe(true)
+      expect(renderedChoices.some(choice => choice.value.agent === 'codex')).toBe(true)
+      expect(renderedChoices.some(choice => choice.value.agent === 'claude-code')).toBe(true)
+      expect(renderedChoices.some(choice => choice.value.agent === 'cursor')).toBe(true)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   test('treats repeatable explicit agents as the final selection', async () => {
     const targets = await resolveInstallTargets({
       cwd: '/repo',
@@ -78,7 +100,7 @@ describe('resolveInstallTargets interactive prompt', () => {
     try {
       await mkdir(join(home, '.acode'), { recursive: true })
       await writeFile(rootDir, 'not a directory')
-      const targets = await resolveInstallTargets({
+      await resolveInstallTargets({
         cwd: '/repo',
         home,
         agents: [],
@@ -88,12 +110,7 @@ describe('resolveInstallTargets interactive prompt', () => {
       })
 
       expect(renderedChoices.some(choice => choice.value.agent === 'astudio')).toBe(false)
-      expect(targets).toEqual([{
-        agent: 'generic',
-        rootDir: `${home}/.agents/skills`,
-        scope: 'user',
-        source: 'fallback'
-      }])
+      expect(renderedChoices.some(choice => choice.value.agent === 'generic')).toBe(true)
     } finally {
       await rm(home, { recursive: true, force: true })
     }
