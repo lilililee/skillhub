@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { CredentialsStore } from '../stores/credentials-store'
 import { resolveToken } from '../services/registry-service'
 import { CliError } from '../shared/errors'
@@ -15,18 +16,21 @@ export interface UpgradeCommandOptions {
   dir?: string | undefined
   registry?: string | undefined
   token?: string | undefined
+  header?: string | string[] | undefined
   check?: boolean | undefined
   force?: boolean | undefined
   json?: boolean | undefined
 }
 
 export async function upgradeCommand(coordinates: string[], options: UpgradeCommandOptions): Promise<string> {
+  const headers = parseHeaders(options.header)
   const credentials = new CredentialsStore()
   const tokenForRegistry = async (registry: string): Promise<string | undefined> =>
     resolveToken(options, process.env, await credentials.getToken(registry))
 
   const plan = await planSkillUpgrades({
     coordinates,
+    headers,
     namespace: options.namespace,
     registry: options.registry,
     agents: options.agent,
@@ -49,7 +53,7 @@ export async function upgradeCommand(coordinates: string[], options: UpgradeComm
   }
   if (options.check) return renderUpgradePlan(plan, { check: true, executed: false }, Boolean(options.json))
 
-  const result = await executeSkillUpgradePlan(plan, { tokenForRegistry })
+  const result = await executeSkillUpgradePlan(plan, { tokenForRegistry, headers })
   const output = renderUpgradeResult(plan, result, Boolean(options.json))
   if (result.failed > 0) {
     process.stdout.write(`${output}\n`)

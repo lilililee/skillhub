@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
 import { resolveRegistry, resolveToken } from '../services/registry-service'
@@ -18,6 +19,7 @@ export interface SuiteCommandOptions {
   check?: boolean | undefined
   registry?: string | undefined
   token?: string | undefined
+  header?: string | string[] | undefined
   json?: boolean | undefined
 }
 
@@ -36,7 +38,7 @@ export async function suiteCommand(
   const registry = resolveRegistry(options, process.env, await configStore.read())
   const token = resolveToken(options, process.env, await credentialsStore.getToken(registry))
   const { namespace, slug } = resolveSkillName(coordinate)
-  const common = { registry, token, namespace, slug }
+  const common = { registry, token, namespace, slug, headers: parseHeaders(options.header) }
 
   if (action === 'install') {
     const isTTY = computeStrictIsTTY({

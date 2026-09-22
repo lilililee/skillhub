@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
 import { resolveRegistry, resolveToken } from '../services/registry-service'
@@ -19,6 +20,7 @@ export interface InstallCommandOptions {
   force?: boolean | undefined
   registry?: string | undefined
   token?: string | undefined
+  header?: string | string[] | undefined
   json?: boolean | undefined
 }
 
@@ -104,6 +106,7 @@ export async function installCommand(
   const installFn = deps.installSkill ?? installSkill
   const result = await installFn({
     registry, token, namespace, slug,
+    headers: parseHeaders(options.header),
     version: options.version,
     targets,
     force: Boolean(options.force)

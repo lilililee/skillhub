@@ -153,8 +153,46 @@ export class SkillHubClient {
   constructor(
     readonly registry: string,
     readonly token?: string,
-    private readonly fetchImpl: typeof fetch = fetch
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly customHeaders: Record<string, string> = {}
   ) {}
+
+  /** Keep custom headers scoped to this registry, including across redirects. */
+  private async request(input: string, init: RequestInit = {}): Promise<Response> {
+    if (Object.keys(this.customHeaders).length === 0) return this.fetchImpl(input, init)
+    const registry = new URL(this.registry)
+    let url = new URL(input)
+    let request = { ...init }
+    for (let redirects = 0; redirects <= 20; redirects += 1) {
+      const headers = new Headers(request.headers)
+      const registryPath = registry.pathname.replace(/\/$/, '')
+      const trusted = url.origin === registry.origin &&
+        (url.pathname === registryPath || url.pathname.startsWith(`${registryPath}/`))
+      if (trusted) {
+        for (const [name, value] of Object.entries(this.customHeaders)) headers.set(name, value)
+      } else {
+        headers.delete('Authorization')
+        headers.delete('Cookie')
+      }
+      const response = await this.fetchImpl(url.toString(), { ...request, headers, redirect: 'manual' })
+      const location = response.headers.get('location')
+      if (![301, 302, 303, 307, 308].includes(response.status) || !location) return response
+      await response.body?.cancel()
+      const next = new URL(location, url)
+      if (!['http:', 'https:'].includes(next.protocol) || (url.protocol === 'https:' && next.protocol !== 'https:')) {
+        throw new Error('unsafe registry redirect')
+      }
+      if (response.status === 303 || ([301, 302].includes(response.status) && request.method === 'POST')) {
+        const nextHeaders = new Headers(request.headers)
+        nextHeaders.delete('Content-Type')
+        nextHeaders.delete('Content-Length')
+        request = { ...request, method: 'GET', headers: nextHeaders }
+        delete request.body
+      }
+      url = next
+    }
+    throw new Error('too many registry redirects')
+  }
 
   async whoami(): Promise<WhoAmIResponse> {
     return this.getJson('/auth/whoami')
@@ -171,7 +209,7 @@ export class SkillHubClient {
   async serverMetadata(): Promise<ServerMetadata> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/.well-known/clawhub.json`)
+      response = await this.request(`${this.registry}/.well-known/clawhub.json`)
     } catch {
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
@@ -197,7 +235,7 @@ export class SkillHubClient {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       let response: Response
       try {
-        response = await this.fetchImpl(url, {
+        response = await this.request(url, {
           method: 'POST',
           headers: { ...this.headers(), ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) }
         })
@@ -221,7 +259,7 @@ export class SkillHubClient {
     const params = version ? `?version=${encodeURIComponent(version)}` : ''
     let response: Response
     try {
-      response = await this.fetchImpl(
+      response = await this.request(
         `${this.registry}/api/v1/suites/${encodeURIComponent(namespace)}/${encodeURIComponent(slug)}${params}`,
         { headers: this.headers() }
       )
@@ -238,7 +276,7 @@ export class SkillHubClient {
   async downloadFromUrl(downloadUrl: string): Promise<Response> {
     let response: Response
     try {
-      response = await this.fetchImpl(new URL(downloadUrl, `${this.registry}/`).toString(), { headers: this.headers() })
+      response = await this.request(new URL(downloadUrl, `${this.registry}/`).toString(), { headers: this.headers() })
     } catch {
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
@@ -273,7 +311,7 @@ export class SkillHubClient {
     const url = await this.downloadUrl(namespace, slug, version)
     let response: Response
     try {
-      response = await this.fetchImpl(url, { headers: this.headers() })
+      response = await this.request(url, { headers: this.headers() })
     } catch {
       throw new CliError('registry unreachable', EXIT.network, { registry: this.registry, next: 'check network or pass --registry' })
     }
@@ -300,7 +338,7 @@ export class SkillHubClient {
     if (rejectExistingVersion) formData.append('rejectExistingVersion', 'true')
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/api/cli/v1/skills/${namespace}/publish`, {
+      response = await this.request(`${this.registry}/api/cli/v1/skills/${namespace}/publish`, {
         method: 'POST',
         headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
         body: formData
@@ -324,7 +362,7 @@ export class SkillHubClient {
     if (rejectExistingVersion) formData.append('rejectExistingVersion', 'true')
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/api/cli/v1/skills/${namespace}/publish/validate`, {
+      response = await this.request(`${this.registry}/api/cli/v1/skills/${namespace}/publish/validate`, {
         method: 'POST',
         headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
         body: formData
@@ -343,7 +381,7 @@ export class SkillHubClient {
   ): Promise<SubmitReviewResponse> {
     let response: Response
     try {
-      response = await this.fetchImpl(
+      response = await this.request(
         `${this.registry}/api/v1/skills/${encodeURIComponent(namespace)}/${encodeURIComponent(slug)}/submit-review`,
         {
           method: 'POST',
@@ -360,7 +398,7 @@ export class SkillHubClient {
   private async getJson<T>(path: string): Promise<T> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/api/cli/v1${path}`, {
+      response = await this.request(`${this.registry}/api/cli/v1${path}`, {
         headers: this.headers()
       })
     } catch (err) {
@@ -372,7 +410,7 @@ export class SkillHubClient {
   private async postPublicJson<T>(path: string, body?: Record<string, unknown>): Promise<T> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}${path}`, {
+      response = await this.request(`${this.registry}${path}`, {
         method: 'POST',
         headers: body ? { 'Content-Type': 'application/json' } : {},
         ...(body ? { body: JSON.stringify(body) } : {})
@@ -452,7 +490,7 @@ export class SkillHubClient {
   private async deleteJson<T>(path: string): Promise<T> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.registry}/api/cli/v1${path}`, {
+      response = await this.request(`${this.registry}/api/cli/v1${path}`, {
         method: 'DELETE',
         headers: this.headers()
       })

@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
 import { AuthService } from '../services/auth-service'
@@ -7,6 +8,7 @@ import { openExternalUrl } from '../platform/browser'
 export interface LoginCommandOptions {
   registry?: string
   token?: string
+  header?: string | string[] | undefined
   json?: boolean
   noOpen?: boolean
 }
@@ -16,7 +18,7 @@ export async function loginCommand(options: LoginCommandOptions): Promise<string
   const credentialsStore = new CredentialsStore()
   const registry = resolveRegistry(options, process.env, await configStore.read())
   const token = resolveToken(options, process.env, await credentialsStore.getToken(registry))
-  const authService = new AuthService(configStore, credentialsStore)
+  const authService = new AuthService(configStore, credentialsStore, { headers: parseHeaders(options.header) })
   const result = token
     ? await authService.login(registry, token)
     : await authService.loginWithDeviceFlow(registry, async details => {

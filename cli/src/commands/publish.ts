@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { stat, readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { ConfigStore } from '../stores/config-store'
@@ -13,6 +14,7 @@ export interface PublishCommandOptions {
   visibility?: string
   registry?: string
   token?: string
+  header?: string | string[] | undefined
   json?: boolean
   dryRun?: boolean
 }
@@ -57,7 +59,7 @@ export async function publishCommand(path: string, options: PublishCommandOption
     throw new CliError(`path must be a file or directory: ${path}`, EXIT.filesystem, { path })
   }
 
-  const client = new SkillHubClient(registry, token)
+  const client = new SkillHubClient(registry, token, undefined, parseHeaders(options.header))
 
   if (options.dryRun) {
     const result = await client.validatePublish(namespace, archiveBlob, toServerVisibility(visibility), archiveName)

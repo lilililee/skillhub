@@ -13,6 +13,7 @@ import { compareSkillVersions } from './skill-version-order'
 const MAX_UPGRADE_SELECTION = 50
 
 export interface UpgradeSelectionOptions {
+  headers?: Record<string, string> | undefined
   coordinates: string[]
   namespace?: string | undefined
   registry?: string | undefined
@@ -64,7 +65,7 @@ export interface UpgradeExecutionResult {
   notAttempted: number
 }
 
-type UpgradeExecutionOptions = Pick<UpgradeSelectionOptions, 'home' | 'tokenForRegistry'> & {
+type UpgradeExecutionOptions = Pick<UpgradeSelectionOptions, 'home' | 'tokenForRegistry' | 'headers'> & {
   installSkillFn?: typeof installSkill
 }
 
@@ -107,7 +108,7 @@ export async function planSkillUpgrades(options: UpgradeSelectionOptions): Promi
     let resolved: ResolveResponse
     try {
       const token = await options.tokenForRegistry(selection.item.registry)
-      resolved = await new SkillHubClient(selection.item.registry, token)
+      resolved = await new SkillHubClient(selection.item.registry, token, undefined, options.headers)
         .resolve(selection.item.namespace, selection.item.slug)
     } catch (error) {
       items.push({
@@ -251,6 +252,7 @@ export async function executeSkillUpgradePlan(
       const installed = await (options.installSkillFn ?? installSkill)({
         registry: item.registry,
         token,
+        headers: options.headers,
         namespace: item.inventoryItem.namespace,
         slug: item.inventoryItem.slug,
         resolved: item.resolved,

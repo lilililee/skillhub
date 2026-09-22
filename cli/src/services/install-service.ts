@@ -21,6 +21,7 @@ import { acquireSkillTargetLock } from './skill-target-lock'
 export interface InstallOptions {
   registry: string
   token?: string | undefined
+  headers?: Record<string, string> | undefined
   namespace: string
   slug: string
   version?: string | undefined
@@ -100,7 +101,7 @@ export async function installSkill(options: InstallOptions): Promise<InstallResu
     namespace: options.namespace,
     slug: options.slug
   }, options.force, inventory)
-  const client = options.client ?? new SkillHubClient(options.registry, options.token)
+  const client = options.client ?? new SkillHubClient(options.registry, options.token, undefined, options.headers)
   const resolved = options.resolved ?? await client.resolve(options.namespace, options.slug, options.version)
   const response = resolved.downloadUrl
     ? await client.downloadFromUrl(resolved.downloadUrl)

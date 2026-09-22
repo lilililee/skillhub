@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { SkillHubClient } from '../clients/skillhub-client'
 import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
@@ -8,6 +9,7 @@ import { EXIT } from '../shared/constants'
 export interface WhoamiCommandOptions {
   registry?: string
   token?: string
+  header?: string | string[] | undefined
   json?: boolean
 }
 
@@ -19,7 +21,7 @@ export async function whoamiCommand(options: WhoamiCommandOptions): Promise<stri
   if (!token) {
     throw new CliError('not logged in', EXIT.auth, { registry, next: 'run `skillhub login`' })
   }
-  const user = await new SkillHubClient(registry, token).whoami()
+  const user = await new SkillHubClient(registry, token, undefined, parseHeaders(options.header)).whoami()
   return options.json
     ? JSON.stringify({ ok: true, registry, handle: user.handle, displayName: user.displayName })
     : `Registry: ${registry}\nHandle: ${user.handle}\nName: ${user.displayName}`

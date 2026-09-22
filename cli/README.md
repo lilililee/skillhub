@@ -6,14 +6,33 @@ SkillHub CLI is the official command-line tool for SkillHub, designed for search
 
 ```bash
 # Install globally via npm
-npm install -g @astron-team/skillhub
+npm install -g @lilililee/skillhub
 
 # Or run directly with npx
-npx @astron-team/skillhub@latest version
+npx @lilililee/skillhub@latest version
 
 # Or install globally via Bun
-bun add -g @astron-team/skillhub
+bun add -g @lilililee/skillhub
 ```
+
+## Custom request headers (fork)
+
+This package is a fork of [iflytek/skillhub](https://github.com/iflytek/skillhub).
+It adds repeatable `--header "Name: value"` options to Registry commands:
+
+```bash
+skillhub install mermaid-diagram --header "SystemId: 206" \
+  --registry https://skillhub.example.com
+skillhub search diagram --header "SystemId: 206" --header "X-Client: webull"
+```
+
+Headers apply to Registry API calls, including authentication, version resolution,
+downloads, publishing, sync, and suites. Repeat a name to replace its value (case
+insensitive); the last value wins. An explicit Authorization header overrides the
+Token-derived Bearer header. Headers are used for this invocation only and are not
+saved in config, credentials, or installation metadata. Pass them again on each
+command. They are not sent to npm when updating the CLI, or to download URLs and
+redirects outside the Registry origin and base path. HTTPS-to-HTTP redirects are rejected.
 
 ## 🚀 Quick Start
 
@@ -450,8 +469,8 @@ skillhub update
 ```
 
 Update mechanism:
-- Installed via npm globally: Auto-executes `npm install -g @astron-team/skillhub@latest`
-- Installed via Bun globally: Auto-executes `bun add -g @astron-team/skillhub@latest`
+- Installed via npm globally: Auto-executes `npm install -g @lilililee/skillhub@latest`
+- Installed via Bun globally: Auto-executes `bun add -g @lilililee/skillhub@latest`
 - Run via npx: Prompts manual update command
 - Unknown installation method: Prompts manual update
 

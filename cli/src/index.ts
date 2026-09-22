@@ -234,10 +234,11 @@ cli
 cli
   .command('login', 'Log in with OAuth Device Flow or an API token')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--no-open', 'Do not open the verification URL in a browser')
   .option('--json', 'Output JSON')
-  .action((options: { registry?: string; token?: string; open?: boolean; json?: boolean }) => {
+  .action((options: { header?: string | string[]; registry?: string; token?: string; open?: boolean; json?: boolean }) => {
     return runCommand(
       () => loginCommand({ ...options, noOpen: options.open === false }),
       Boolean(options.json)
@@ -247,27 +248,30 @@ cli
 cli
   .command('logout', 'Remove local token')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--json', 'Output JSON')
-  .action((options: { registry?: string; json?: boolean }) => {
+  .action((options: { header?: string | string[]; registry?: string; json?: boolean }) => {
     return runCommand(() => logoutCommand(options), Boolean(options.json))
   })
 
 cli
   .command('whoami', 'Verify current token')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--json', 'Output JSON')
-  .action((options: { registry?: string; token?: string; json?: boolean }) => {
+  .action((options: { header?: string | string[]; registry?: string; token?: string; json?: boolean }) => {
     return runCommand(() => whoamiCommand(options), Boolean(options.json))
   })
 
 cli
   .command('search [query]', 'Search published skills')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--limit <n>', 'Max results', { default: 20 })
   .option('--json', 'Output JSON')
-  .action((query: string | undefined, options: { registry?: string; token?: string; limit?: number; json?: boolean }) => {
+  .action((query: string | undefined, options: { header?: string | string[]; registry?: string; token?: string; limit?: number; json?: boolean }) => {
     return runCommand(() => searchCommand(query ?? '', options), Boolean(options.json))
   })
 
@@ -280,6 +284,7 @@ cli
   .option('--dir <path>', 'Install directory')
   .option('--force', 'Overwrite existing')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--json', 'Output JSON')
   .action((slug: string, options: InstallCommandOptions & { agent?: string | string[] }) => {
@@ -299,6 +304,7 @@ cli
   .option('--force', 'Replace local changes during install or upgrade')
   .option('--check', 'Show an upgrade plan without writing')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--json', 'Output JSON')
   .action((action: string, coordinate: string, options: SuiteCommandOptions & { agent?: string | string[] }) => {
@@ -318,6 +324,7 @@ cli
   .option('--agent <profile>', 'Filter installed targets by Agent (repeatable)')
   .option('--dir <path>', 'Filter installed targets by directory')
   .option('--registry <url>', 'Filter by installation source registry')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token override')
   .option('--check', 'Show the exact plan without writing')
   .option('--force', 'Replace local changes from the same source')
@@ -342,6 +349,7 @@ cli
   .option('--dry-run', 'Validate without uploading')
   .option('--submit-review', 'Submit an uploaded version for review when required')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--json', 'Output JSON')
   .action((action: string, path: string | undefined, options: SyncPullOptions & SyncPushOptions & { skill?: string | string[] }) => {
@@ -375,6 +383,7 @@ cli
   .option('--agent <profile>', 'Filter by agent (repeatable)')
   .option('--dir <path>', 'Filter by directory')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--json', 'Output JSON')
   .action((options: ListCommandOptions & { agent?: string | string[] }) => {
     return runCommand(() => listCommand({ ...options, agent: toArray(options.agent) }), Boolean(options.json))
@@ -388,6 +397,7 @@ cli
   .option('--hard', 'Skip confirmation for remote delete')
   .option('--namespace <slug>', 'Namespace for local or remote delete')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--json', 'Output JSON')
   .action((coordinate: string, options: RemoveCommandOptions & { agent?: string | string[] }) => {
@@ -407,6 +417,7 @@ cli
   .option('--visibility <v>', 'Visibility (public|namespace-only|private)')
   .option('--dry-run', 'Validate without publishing')
   .option('--registry <url>', 'Registry URL')
+  .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token')
   .option('--json', 'Output JSON')
   .action((path: string, options: PublishCommandOptions) => {

@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { join, resolve } from 'node:path'
 import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
@@ -21,6 +22,7 @@ export interface SyncCommonOptions {
   dir?: string
   registry?: string
   token?: string
+  header?: string | string[] | undefined
   json?: boolean
 }
 
@@ -166,7 +168,7 @@ async function resolveSyncContext(options: SyncCommonOptions): Promise<{
     throw new CliError('authentication required for namespace sync', EXIT.auth, { next: 'run `skillhub login`' })
   }
   const rootDir = resolve(options.dir ?? join(process.cwd(), '.agents', 'skills'))
-  return { client: new SkillHubClient(registry, token), registry, token, namespace, rootDir }
+  return { client: new SkillHubClient(registry, token, undefined, parseHeaders(options.header)), registry, token, namespace, rootDir }
 }
 
 export function requireSyncNamespace(value: string | undefined): string {

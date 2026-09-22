@@ -1,3 +1,9 @@
+## 0.1.12-header.1
+
+- Publish the CLI fork as `@lilililee/skillhub`.
+- Add repeatable `--header "Name: value"` to Registry commands.
+- Keep custom headers invocation-local and strip Registry credentials from external downloads and redirects when custom headers are supplied.
+
 # Changelog
 
 All notable CLI behavior changes are documented in this file.

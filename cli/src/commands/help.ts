@@ -15,7 +15,7 @@ export const commands = {
   },
   login: {
     summary: 'Log in with OAuth Device Flow or an API token',
-    usage: 'skillhub login [--token <token>] [--no-open] [--registry <url>] [--json]',
+    usage: 'skillhub login [--token <token>] [--no-open] [--registry <url>] [--header "Name: value"] [--json]',
     examples: [
       'skillhub login --registry https://skillhub.example.com',
       'skillhub login --registry https://skillhub.example.com --no-open',
@@ -24,24 +24,25 @@ export const commands = {
   },
   logout: {
     summary: 'Remove local token',
-    usage: 'skillhub logout [--registry <url>] [--json]',
+    usage: 'skillhub logout [--registry <url>] [--header "Name: value"] [--json]',
     examples: ['skillhub logout']
   },
   whoami: {
     summary: 'Verify current token',
-    usage: 'skillhub whoami [--token <token>] [--registry <url>] [--json]',
+    usage: 'skillhub whoami [--token <token>] [--registry <url>] [--header "Name: value"] [--json]',
     examples: ['skillhub whoami', 'skillhub whoami --json']
   },
   search: {
     summary: 'Search published skills',
-    usage: 'skillhub search [query] [--limit <n>] [--registry <url>] [--token <token>] [--json]',
+    usage: 'skillhub search [query] [--limit <n>] [--registry <url>] [--header "Name: value"] [--token <token>] [--json]',
     examples: ['skillhub search', 'skillhub search pdf', 'skillhub search pdf --token sk_xxx']
   },
   install: {
     summary: 'Install a skill locally',
-    usage: 'skillhub install <coordinate> [--scope <user|project>] [--namespace <slug>] [--version <v>] [--agent <profile>] [--dir <path>] [--force] [--registry <url>] [--token <token>] [--json]',
+    usage: 'skillhub install <coordinate> [--scope <user|project>] [--namespace <slug>] [--version <v>] [--agent <profile>] [--dir <path>] [--force] [--registry <url>] [--header "Name: value"] [--token <token>] [--json]',
     examples: [
       'skillhub install pdf-parser',
+      'skillhub install pdf-parser --header "SystemId: 206"',
       'skillhub install team/my-skill',
       'skillhub install @team/my-skill',
       'skillhub install team--my-skill',
@@ -61,7 +62,7 @@ export const commands = {
   },
   upgrade: {
     summary: 'Upgrade explicitly selected installed skills',
-    usage: 'skillhub upgrade <coordinate...> [--namespace <slug>] [--agent <profile>] [--dir <path>] [--registry <url>] [--token <token>] [--check] [--force] [--json]',
+    usage: 'skillhub upgrade <coordinate...> [--namespace <slug>] [--agent <profile>] [--dir <path>] [--registry <url>] [--header "Name: value"] [--token <token>] [--check] [--force] [--json]',
     examples: [
       'skillhub upgrade @global/skillhub-cli',
       'skillhub upgrade @team/code-review @team/java-guide --check --json',
@@ -79,12 +80,12 @@ export const commands = {
   },
   list: {
     summary: 'List local installs',
-    usage: 'skillhub list [--agent <profile>] [--dir <path>] [--registry <url>] [--json]',
+    usage: 'skillhub list [--agent <profile>] [--dir <path>] [--registry <url>] [--header "Name: value"] [--json]',
     examples: ['skillhub list', 'skillhub list --agent codex']
   },
   remove: {
     summary: 'Remove local or remote skill',
-    usage: 'skillhub remove <coordinate> [--agent <profile>] [--all] [--remote] [--hard] [--namespace <slug>] [--registry <url>] [--token <token>] [--json]',
+    usage: 'skillhub remove <coordinate> [--agent <profile>] [--all] [--remote] [--hard] [--namespace <slug>] [--registry <url>] [--header "Name: value"] [--token <token>] [--json]',
     examples: [
       'skillhub remove pdf-parser',
       'skillhub remove team/my-skill',
@@ -99,7 +100,7 @@ export const commands = {
   },
   publish: {
     summary: 'Publish a local skill package',
-    usage: 'skillhub publish <path> [--namespace <slug>] [--visibility <public|namespace-only|private>] [--dry-run] [--registry <url>] [--token <token>] [--json]',
+    usage: 'skillhub publish <path> [--namespace <slug>] [--visibility <public|namespace-only|private>] [--dry-run] [--registry <url>] [--header "Name: value"] [--token <token>] [--json]',
     examples: ['skillhub publish ./my-skill', 'skillhub publish ./my-skill --namespace myspace']
   },
   update: {

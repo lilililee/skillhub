@@ -27,6 +27,7 @@ const SUITE_CAPABILITY = 'skill-suite-v1'
 export interface SuiteInstallOptions {
   registry: string
   token?: string | undefined
+  headers?: Record<string, string> | undefined
   namespace: string
   slug: string
   version?: string | undefined
@@ -125,7 +126,7 @@ export async function assertSuiteCapability(client: SkillHubClient): Promise<voi
  * before any live Skill directory is replaced; commit failures restore all captured backups.
  */
 export async function installSuite(options: SuiteInstallOptions): Promise<SuiteInstallResult> {
-  const client = options.client ?? new SkillHubClient(options.registry, options.token)
+  const client = options.client ?? new SkillHubClient(options.registry, options.token, undefined, options.headers)
   const renameOperation = options.renameOperation ?? rename
   await assertSuiteCapability(client)
   // The same client key survives the single HTTP retry; the Server owns the operation ID.
@@ -335,12 +336,13 @@ async function installSuiteTransaction(
 export async function checkSuite(options: {
   registry: string
   token?: string | undefined
+  headers?: Record<string, string> | undefined
   namespace: string
   slug: string
   home?: string | undefined
   client?: SkillHubClient | undefined
 }): Promise<SuiteCheckResult> {
-  const client = options.client ?? new SkillHubClient(options.registry, options.token)
+  const client = options.client ?? new SkillHubClient(options.registry, options.token, undefined, options.headers)
   await assertSuiteCapability(client)
   const inventory = await new InventoryStore(options.home).read()
   const suite = findInstalledSuite(inventory, options.registry, options.namespace, options.slug)
@@ -498,12 +500,13 @@ async function removeSuiteTransaction(options: SuiteRemoveOptions): Promise<Suit
 export async function planSuiteUpgrade(options: {
   registry: string
   token?: string | undefined
+  headers?: Record<string, string> | undefined
   namespace: string
   slug: string
   home?: string | undefined
   client?: SkillHubClient | undefined
 }): Promise<SuiteUpgradePlan> {
-  const client = options.client ?? new SkillHubClient(options.registry, options.token)
+  const client = options.client ?? new SkillHubClient(options.registry, options.token, undefined, options.headers)
   await assertSuiteCapability(client)
   const inventory = await new InventoryStore(options.home).read()
   const current = findInstalledSuite(inventory, options.registry, options.namespace, options.slug)
@@ -544,13 +547,14 @@ export async function planSuiteUpgrade(options: {
 export async function upgradeSuite(options: {
   registry: string
   token?: string | undefined
+  headers?: Record<string, string> | undefined
   namespace: string
   slug: string
   force?: boolean | undefined
   home?: string | undefined
   client?: SkillHubClient | undefined
 }): Promise<{ upgrade: SuiteUpgradePlan; result?: SuiteInstallResult }> {
-  const client = options.client ?? new SkillHubClient(options.registry, options.token)
+  const client = options.client ?? new SkillHubClient(options.registry, options.token, undefined, options.headers)
   const upgrade = await planSuiteUpgrade({ ...options, client })
   if (upgrade.current.version === upgrade.remote.version && upgrade.changes.length === 0) {
     return { upgrade }

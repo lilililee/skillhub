@@ -13,12 +13,13 @@ export class AuthService {
     private readonly configStore: ConfigStore,
     private readonly credentialsStore: CredentialsStore,
     options: {
+      headers?: Record<string, string> | undefined
       clientFactory?: (registry: string, token?: string) => SkillHubClient
       sleep?: (milliseconds: number) => Promise<void>
       now?: () => number
     } = {}
   ) {
-    this.clientFactory = options.clientFactory ?? ((registry, token) => new SkillHubClient(registry, token))
+    this.clientFactory = options.clientFactory ?? ((registry, token) => new SkillHubClient(registry, token, undefined, options.headers))
     this.sleep = options.sleep ?? (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)))
     this.now = options.now ?? Date.now
   }

@@ -1,3 +1,4 @@
+import { parseHeaders } from '../shared/headers'
 import { ConfigStore } from '../stores/config-store'
 import { CredentialsStore } from '../stores/credentials-store'
 import { SkillHubClient } from '../clients/skillhub-client'
@@ -15,6 +16,7 @@ export interface RemoveCommandOptions {
   namespace?: string | undefined
   registry?: string | undefined
   token?: string | undefined
+  header?: string | string[] | undefined
   json?: boolean | undefined
 }
 
@@ -50,7 +52,7 @@ export async function removeCommand(skillNameArg: string, options: RemoveCommand
       throw new CliError('non-interactive remote delete requires --hard', EXIT.usage)
     }
 
-    const client = new SkillHubClient(registry, token)
+    const client = new SkillHubClient(registry, token, undefined, parseHeaders(options.header))
     await client.deleteRemote(namespace, slug)
 
     if (options.json) {
