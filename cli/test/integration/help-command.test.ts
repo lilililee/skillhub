@@ -58,8 +58,9 @@ describe('help command', () => {
   test('distinguishes skill upgrade from CLI self-update and namespace sync', async () => {
     const upgrade = await runCli(['help', 'upgrade'])
     expect(upgrade.exitCode).toBe(0)
-    expect(upgrade.stdout).toContain('Upgrade explicitly selected installed skills')
-    expect(upgrade.stdout).toContain('skillhub upgrade <coordinate...>')
+    expect(upgrade.stdout).toContain('Upgrade selected or all installed skills')
+    expect(upgrade.stdout).toContain('upgrade --all')
+    expect(upgrade.stdout).toContain('skillhub upgrade [coordinate...]')
     expect(upgrade.stdout).toContain('--check')
     expect(upgrade.stdout).toContain('--force')
 

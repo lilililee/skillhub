@@ -1,3 +1,8 @@
+## 0.1.12-header.2
+
+- Treat repeatable explicit `--agent` values as the final install target selection.
+- Support interactive `upgrade`, non-interactive `upgrade --all`, and local-only `uninstall`.
+
 ## 0.1.12-header.1
 
 - Publish the CLI fork as `@lilililee/skillhub`.

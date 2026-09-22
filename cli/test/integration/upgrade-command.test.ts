@@ -656,7 +656,7 @@ describe('upgrade command', () => {
     expect(Object.keys(migratedMetadata.files)).toContain('SKILL.md')
   })
 
-  test('never installs a missing skill and never offers an implicit upgrade-all', async () => {
+  test('never installs a missing skill and requires --all outside an interactive terminal', async () => {
     const env = await createTempHome()
     const missing = await runCli(['upgrade', '@global/missing', '--check'], {
       HOME: env.home,
@@ -666,14 +666,54 @@ describe('upgrade command', () => {
     expect(missing.stderr).toContain('use skillhub install')
 
     const empty = await runCli(['upgrade'], { HOME: env.home, USERPROFILE: env.home })
-    expect(empty.exitCode).toBe(5)
-    expect(empty.stderr).toContain('at least one')
+    expect(empty.exitCode).toBe(0)
+    expect(empty.stdout).toContain('No installed skills selected')
 
     const tooMany = await runCli([
       'upgrade', ...Array.from({ length: 51 }, (_, index) => `@global/skill-${index}`)
     ], { HOME: env.home, USERPROFILE: env.home })
     expect(tooMany.exitCode).toBe(5)
     expect(tooMany.stderr).toContain('at most 50')
+  })
+
+  test('--all upgrades every matching installed skill without prompting', async () => {
+    const env = await createTempHome()
+    const skill = {
+      namespace: 'global',
+      slug: 'upgrade-all',
+      version: '1.0.0',
+      versionId: 1,
+      ...makeSkill('# v1')
+    }
+    const registry = await startFakeRegistry({ skills: [skill] })
+    registries.push(registry)
+    const rootDir = join(env.cwd, 'skills')
+    await mkdir(rootDir, { recursive: true })
+    await runCli(['install', '@global/upgrade-all', '--dir', rootDir, '--registry', registry.url], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+
+    const withoutSelection = await runCli(['upgrade', '--registry', registry.url], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+    expect(withoutSelection.exitCode).toBe(5)
+    expect(withoutSelection.stderr).toContain('pass --all')
+
+    skill.version = '1.1.0'
+    skill.versionId = 2
+    Object.assign(skill, makeSkill('# v2'))
+    const upgraded = await runCli(['upgrade', '--all', '--registry', registry.url, '--json'], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+    expect(upgraded.exitCode).toBe(0)
+    expect(JSON.parse(upgraded.stdout).items[0]).toMatchObject({
+      coordinate: '@global/upgrade-all',
+      action: 'upgraded'
+    })
+    expect(await readFile(join(rootDir, 'upgrade-all', 'SKILL.md'), 'utf-8')).toBe('# v2')
   })
 
   test('accepts exactly fifty explicitly installed coordinates', async () => {

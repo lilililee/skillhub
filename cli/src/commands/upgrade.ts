@@ -1,5 +1,6 @@
 import { parseHeaders } from '../shared/headers'
 import { CredentialsStore } from '../stores/credentials-store'
+import { InventoryStore, type InventoryItem } from '../stores/inventory-store'
 import { resolveToken } from '../services/registry-service'
 import { CliError } from '../shared/errors'
 import { EXIT } from '../shared/constants'
@@ -17,19 +18,33 @@ export interface UpgradeCommandOptions {
   registry?: string | undefined
   token?: string | undefined
   header?: string | string[] | undefined
+  all?: boolean | undefined
   check?: boolean | undefined
   force?: boolean | undefined
   json?: boolean | undefined
 }
 
 export async function upgradeCommand(coordinates: string[], options: UpgradeCommandOptions): Promise<string> {
+  if (coordinates.length > 0 && options.all) {
+    throw new CliError('coordinates cannot be combined with --all', EXIT.usage)
+  }
+
+  const selectedCoordinates = coordinates.length > 0
+    ? coordinates
+    : await selectUpgradeCoordinates(options)
+  if (selectedCoordinates.length === 0) {
+    return options.json
+      ? JSON.stringify({ ok: true, check: Boolean(options.check), summary: { upgrades: 0, unchanged: 0, blocked: 0 }, items: [] })
+      : 'No installed skills selected.'
+  }
+
   const headers = parseHeaders(options.header)
   const credentials = new CredentialsStore()
   const tokenForRegistry = async (registry: string): Promise<string | undefined> =>
     resolveToken(options, process.env, await credentials.getToken(registry))
 
   const plan = await planSkillUpgrades({
-    coordinates,
+    coordinates: selectedCoordinates,
     headers,
     namespace: options.namespace,
     registry: options.registry,
@@ -63,6 +78,44 @@ export async function upgradeCommand(coordinates: string[], options: UpgradeComm
     })
   }
   return output
+}
+
+async function selectUpgradeCoordinates(options: UpgradeCommandOptions): Promise<string[]> {
+  const inventory = await new InventoryStore().read()
+  const candidates = inventory.items.filter(item => matchesUpgradeFilters(item, options))
+  const coordinates = [...new Set(candidates.map(item => `@${item.namespace}/${item.slug}`))]
+  if (coordinates.length === 0) return []
+  if (options.all) return coordinates
+
+  const interactive = process.stdin.isTTY === true && process.stdout.isTTY === true && !options.json
+  if (!interactive) {
+    throw new CliError('provide installed skill coordinates or pass --all outside an interactive terminal', EXIT.usage)
+  }
+
+  const prompts = await import('prompts')
+  const { selected } = await prompts.default({
+    type: 'multiselect',
+    name: 'selected',
+    message: 'Select installed skills to upgrade',
+    choices: candidates.map(item => ({
+      title: `@${item.namespace}/${item.slug}@${item.version} (${item.targets.length} target${item.targets.length === 1 ? '' : 's'})`,
+      value: `@${item.namespace}/${item.slug}`
+    }))
+  })
+  return Array.isArray(selected) ? [...new Set(selected as string[])] : []
+}
+
+function matchesUpgradeFilters(item: InventoryItem, options: UpgradeCommandOptions): boolean {
+  if (options.registry && normalizeRegistry(item.registry) !== normalizeRegistry(options.registry)) return false
+  return item.targets.some(target => {
+    if (options.agent?.length && !options.agent.includes(target.agent)) return false
+    if (options.dir && !target.installDir.startsWith(options.dir)) return false
+    return true
+  })
+}
+
+function normalizeRegistry(value: string): string {
+  return value.replace(/\/+$/, '')
 }
 
 function renderUpgradePlan(

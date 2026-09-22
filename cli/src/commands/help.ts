@@ -61,12 +61,22 @@ export const commands = {
     ]
   },
   upgrade: {
-    summary: 'Upgrade explicitly selected installed skills',
-    usage: 'skillhub upgrade <coordinate...> [--namespace <slug>] [--agent <profile>] [--dir <path>] [--registry <url>] [--header "Name: value"] [--token <token>] [--check] [--force] [--json]',
+    summary: 'Upgrade selected or all installed skills',
+    usage: 'skillhub upgrade [coordinate...] [--all] [--namespace <slug>] [--agent <profile>] [--dir <path>] [--registry <url>] [--header "Name: value"] [--token <token>] [--check] [--force] [--json]',
     examples: [
       'skillhub upgrade @global/skillhub-cli',
+      'skillhub upgrade --all',
       'skillhub upgrade @team/code-review @team/java-guide --check --json',
       'skillhub upgrade code-review --namespace team --agent codex'
+    ]
+  },
+  uninstall: {
+    summary: 'Uninstall local skills',
+    usage: 'skillhub uninstall [coordinate] [--agent <profile>] [--all] [--namespace <slug>] [--registry <url>] [--json]',
+    examples: [
+      'skillhub uninstall',
+      'skillhub uninstall @global/pdf-parser --all',
+      'skillhub uninstall @team/code-review --agent codex'
     ]
   },
   sync: {

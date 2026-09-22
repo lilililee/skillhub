@@ -149,6 +149,37 @@ describe('remove command — flag validation (P0)', () => {
 // ---------------------------------------------------------------------------
 
 describe('remove command — local remove (P1)', () => {
+  test('uninstall provides a local-only alias and requires a coordinate outside a TTY', async () => {
+    const env = await createTempHome()
+    registry = await startFakeRegistry({ token: 'sk_ok' })
+    const rootDir = `${env.home}/agents/codex`
+    const installDir = `${rootDir}/skills/my-skill`
+    await createInstallDir(installDir)
+    await seedInventory(env.home, [makeItem({
+      registry: registry.url,
+      namespace: 'global',
+      slug: 'my-skill',
+      agent: 'codex',
+      rootDir,
+      installDir
+    })])
+
+    const missingCoordinate = await runCli(['uninstall', '--registry', registry.url], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+    expect(missingCoordinate.exitCode).toBe(5)
+    expect(missingCoordinate.stderr).toContain('provide an installed skill coordinate')
+
+    const removed = await runCli(['uninstall', '@global/my-skill', '--all', '--registry', registry.url, '--json'], {
+      HOME: env.home,
+      USERPROFILE: env.home
+    })
+    expect(removed.exitCode).toBe(0)
+    expect(JSON.parse(removed.stdout).removed).toHaveLength(1)
+    expect(await pathExists(installDir)).toBe(false)
+  })
+
   test('--json shape for local remove (happy path)', async () => {
     const env = await createTempHome()
     registry = await startFakeRegistry({ token: 'sk_ok' })

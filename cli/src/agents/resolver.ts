@@ -68,6 +68,10 @@ async function resolveScopedTargets(
   }
   candidates = await dedupeByRoot(candidates)
 
+  // Explicit targets are already the user's final selection. Prompting again
+  // makes repeatable --agent awkward for wrappers and automation.
+  if (agentList.length > 0) return candidates
+
   if (scope === 'user' && agentList.length === 0 && options.interactive && !options.json) {
     candidates = await dedupeByRoot([
       ...candidates,

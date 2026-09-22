@@ -294,8 +294,9 @@ the published ZIP and is excluded when a managed directory is published again.
 
 ## ⬆️ Upgrade Installed Skills
 
-`upgrade` only operates on explicitly selected, SkillHub-managed local installations. It never
-installs a missing Skill and has no implicit upgrade-all mode.
+`upgrade` only operates on SkillHub-managed local installations and never installs a missing Skill.
+Pass coordinates explicitly, use `--all` outside an interactive terminal, or omit coordinates in an
+interactive terminal to select installed Skills.
 
 ```bash
 # Preview without changing files
@@ -304,6 +305,7 @@ skillhub upgrade @global/skillhub-cli --check
 # Upgrade one or a bounded list of installed Skills
 skillhub upgrade @global/skillhub-cli
 skillhub upgrade @team/code-review @team/java-guide
+skillhub upgrade --all
 
 # Machine-readable plan
 skillhub upgrade @team/code-review --check --json
@@ -320,6 +322,15 @@ If a multi-Skill run fails after an earlier upgrade commits, execution stops and
 as `upgraded`, `failed`, or `not-attempted`; a committed upgrade is never rolled back implicitly.
 New installations store absolute target paths. An older inventory entry with relative target paths
 must be reinstalled before upgrade because its original working directory cannot be recovered safely.
+
+For local-only removal, `uninstall` accepts the same local filters as `remove`. Omitting the
+coordinate opens an interactive multi-select; scripts and CI must provide a coordinate.
+
+```bash
+skillhub uninstall
+skillhub uninstall @global/pdf-parser --all
+skillhub uninstall @team/code-review --agent codex
+```
 
 ## 🔄 Namespace Workspaces
 
@@ -501,7 +512,8 @@ Update mechanism:
 | `skillhub whoami [--registry <url>] [--token <token>] [--json]` | Validate current token and display user information |
 | `skillhub search <query> [--registry <url>] [--token <token>] [--limit <n>] [--json]` | Search published skills |
 | `skillhub install <coordinate> [--scope <user\|project>] [--namespace <slug>] [--version <v>] [--agent <profile>] [--dir <path>] [--force] [--registry <url>] [--token <token>] [--json]` | Install a skill |
-| `skillhub upgrade <coordinate...> [--namespace <slug>] [--agent <profile>] [--dir <path>] [--registry <url>] [--check] [--force] [--json]` | Upgrade explicitly selected installed skills |
+| `skillhub upgrade [coordinate...] [--all] [--namespace <slug>] [--agent <profile>] [--dir <path>] [--registry <url>] [--check] [--force] [--json]` | Upgrade selected or all installed skills |
+| `skillhub uninstall [coordinate] [--agent <profile>] [--all] [--namespace <slug>] [--registry <url>] [--json]` | Uninstall local skills |
 | `skillhub list [--agent <profile>] [--dir <path>] [--registry <url>] [--json]` | List installed skills |
 | `skillhub remove <coordinate> [--agent <profile>] [--all] [--remote] [--hard] [--namespace <slug>] [--registry <url>] [--token <token>] [--json]` | Remove a skill |
 | `skillhub doctor [--json]` | Scan project directory and rebuild local inventory |

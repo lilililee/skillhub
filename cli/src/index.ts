@@ -12,6 +12,7 @@ import { searchCommand } from './commands/search'
 import { suiteCommand, type SuiteCommandOptions } from './commands/suite'
 import { syncDiffCommand, syncPullCommand, syncPushCommand, syncStatusCommand, type SyncCommonOptions, type SyncPullOptions, type SyncPushOptions } from './commands/sync'
 import { updateCommand } from './commands/update'
+import { uninstallCommand, type UninstallCommandOptions } from './commands/uninstall'
 import { upgradeCommand, type UpgradeCommandOptions } from './commands/upgrade'
 import { versionCommand } from './commands/version'
 import { whoamiCommand } from './commands/whoami'
@@ -326,12 +327,28 @@ cli
   .option('--registry <url>', 'Filter by installation source registry')
   .option('--header <header>', 'Custom Registry header, e.g. "Name: value" (repeatable)')
   .option('--token <token>', 'API token override')
+  .option('--all', 'Upgrade all matching installed skills')
   .option('--check', 'Show the exact plan without writing')
   .option('--force', 'Replace local changes from the same source')
   .option('--json', 'Output JSON')
   .action((coordinates: string[], options: UpgradeCommandOptions & { agent?: string | string[] }) => {
     return runCommand(
       () => upgradeCommand(coordinates, { ...options, agent: toArray(options.agent) }),
+      Boolean(options.json)
+    )
+  })
+
+cli
+  .command('uninstall [coordinate]', 'Uninstall local skills')
+  .option('--agent <profile>', 'Filter installed targets by Agent (repeatable)')
+  .option('--all', 'Remove all targets for the specified skill')
+  .option('--namespace <slug>', 'Filter by namespace')
+  .option('--registry <url>', 'Filter by installation source registry')
+  .option('--header <header>', 'Custom Registry header, accepted for wrapper compatibility')
+  .option('--json', 'Output JSON')
+  .action((coordinate: string | undefined, options: UninstallCommandOptions & { agent?: string | string[] }) => {
+    return runCommand(
+      () => uninstallCommand(coordinate, { ...options, agent: toArray(options.agent) }),
       Boolean(options.json)
     )
   })

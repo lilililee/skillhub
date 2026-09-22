@@ -35,6 +35,20 @@ afterEach(() => {
 const { resolveInstallTargets } = await import('../../../src/agents/resolver')
 
 describe('resolveInstallTargets interactive prompt', () => {
+  test('treats repeatable explicit agents as the final selection', async () => {
+    const targets = await resolveInstallTargets({
+      cwd: '/repo',
+      home: '/home/u',
+      agents: ['codex', 'claude-code'],
+      scope: 'project',
+      json: false,
+      interactive: true
+    })
+
+    expect(targets.map(target => target.agent)).toEqual(['codex', 'claude-code'])
+    expect(renderedChoices).toEqual([])
+  })
+
   test('renders AStudio by display name when its directory was detected', async () => {
     const home = await mkdtemp(join(tmpdir(), 'skillhub-astudio-resolver-'))
     const nativeRootDir = join(home, '.acode', 'skills')
