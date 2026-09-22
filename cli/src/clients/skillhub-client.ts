@@ -154,7 +154,8 @@ export class SkillHubClient {
     readonly registry: string,
     readonly token?: string,
     private readonly fetchImpl: typeof fetch = fetch,
-    private readonly customHeaders: Record<string, string> = {}
+    private readonly customHeaders: Record<string, string> = {},
+    private readonly authScheme: 'bearer' | 'raw' = process.env.SKILLHUB_AUTH_SCHEME === 'raw' ? 'raw' : 'bearer'
   ) {}
 
   /** Keep custom headers scoped to this registry, including across redirects. */
@@ -340,7 +341,7 @@ export class SkillHubClient {
     try {
       response = await this.request(`${this.registry}/api/cli/v1/skills/${namespace}/publish`, {
         method: 'POST',
-        headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
+        headers: this.headers(),
         body: formData
       })
     } catch {
@@ -364,7 +365,7 @@ export class SkillHubClient {
     try {
       response = await this.request(`${this.registry}/api/cli/v1/skills/${namespace}/publish/validate`, {
         method: 'POST',
-        headers: this.token ? { Authorization: `Bearer ${this.token}` } : {},
+        headers: this.headers(),
         body: formData
       })
     } catch {
@@ -484,7 +485,10 @@ export class SkillHubClient {
   }
 
   private headers(): HeadersInit {
-    return this.token ? { Authorization: `Bearer ${this.token}` } : {}
+    if (!this.token) return {}
+    return {
+      Authorization: this.authScheme === 'raw' ? this.token : `Bearer ${this.token}`
+    }
   }
 
   private async deleteJson<T>(path: string): Promise<T> {

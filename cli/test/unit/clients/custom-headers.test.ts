@@ -1,7 +1,20 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { SkillHubClient } from '../../../src/clients/skillhub-client'
 
 describe('custom Registry headers', () => {
+  test('supports raw token authentication for registries that do not accept Bearer', async () => {
+    const calls: Array<{ headers: Headers }> = []
+    const fetchImpl = mock(async (_input: string | URL | Request, init?: RequestInit) => {
+      calls.push({ headers: new Headers(init?.headers) })
+      return Response.json({ handle: 'tester', displayName: 'Tester' })
+    }) as unknown as typeof fetch
+
+    const client = new SkillHubClient('https://registry.example.com', 'office-token', fetchImpl, {}, 'raw')
+    await client.whoami()
+
+    expect(calls[0]?.headers.get('Authorization')).toBe('office-token')
+  })
+
   test('applies headers to JSON, download, multipart, metadata, and device flow requests', async () => {
     const requests: Request[] = []
     const fetchImpl = (async (input: URL | RequestInfo, init?: RequestInit) => {

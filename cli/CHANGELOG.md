@@ -1,6 +1,7 @@
 ## 0.1.12-header.3
 
 - Offer all supported agents after an interactive user/project scope selection, including agents whose skill directories do not exist yet.
+- Support `SKILLHUB_AUTH_SCHEME=raw` for registries that require an unprefixed Authorization token.
 
 ## 0.1.12-header.2
 
