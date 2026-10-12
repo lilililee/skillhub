@@ -496,4 +496,12 @@ describe('SkillHubClient', () => {
     await err.toHaveProperty('message', 'registry unreachable')
     await err.toHaveProperty('exitCode', EXIT.network)
   })
+
+  test('builds the query-style download URL', async () => {
+    const client = new SkillHubClient('http://registry.test/api/skillhub', 'token')
+    expect(await client.downloadUrl('global', 'webull-issue-quick', '1.0.3'))
+      .toBe('http://registry.test/api/skillhub/v1/skills/versions/download?namespace=global&slug=webull-issue-quick&version=1.0.3')
+    expect(await client.downloadUrl('global', 'demo'))
+      .toBe('http://registry.test/api/skillhub/v1/skills/versions/download?namespace=global&slug=demo')
+  })
 })

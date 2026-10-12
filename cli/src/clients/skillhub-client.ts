@@ -302,12 +302,10 @@ export class SkillHubClient {
   }
 
   async downloadUrl(namespace: string, slug: string, version?: string): Promise<string> {
-    if (version) {
-      return `${this.registry}/api/cli/v1/skills/${namespace}/${slug}/versions/${version}/download`
-    }
-    return `${this.registry}/api/cli/v1/skills/${namespace}/${slug}/download`
+    const params = new URLSearchParams({ namespace, slug })
+    if (version) params.set('version', version)
+    return `${this.registry}/v1/skills/versions/download?${params}`
   }
-
   async download(namespace: string, slug: string, version?: string): Promise<Response> {
     const url = await this.downloadUrl(namespace, slug, version)
     let response: Response
