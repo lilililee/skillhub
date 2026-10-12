@@ -1,3 +1,7 @@
+## 0.1.12-header.8
+
+- Accept Skill bundles wrapped in a single top-level directory when the unwrapped content matches the resolved fingerprint, installing them at `<skills-dir>/<slug>/`.
+
 ## 0.1.12-header.4
 
 - Limit interactive scope selection to Kiro, Codex, and Claude Code, in that order.

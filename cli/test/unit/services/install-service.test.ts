@@ -23,7 +23,8 @@ async function exists(path: string): Promise<boolean> {
 
 function skillFingerprint(zipEntries: Record<string, string>): string {
   const aggregate = createHash('sha256')
-  for (const [name, content] of Object.entries(zipEntries).sort(([left], [right]) => left.localeCompare(right))) {
+  // Match snapshotSkillDirectory, which orders paths by UTF-16 code units.
+  for (const [name, content] of Object.entries(zipEntries).sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))) {
     const fileHash = createHash('sha256').update(content).digest('hex')
     aggregate.update(`${name}:${fileHash}\n`, 'utf8')
   }
@@ -168,6 +169,129 @@ describe('installSkill', () => {
     expect(await readFile(join(skillDir, 'SKILL.md'), 'utf-8')).toBe('# Existing')
     expect(await readFile(inventoryPath, 'utf-8')).toBe(inventoryBefore)
     expect((await readdir(rootDir)).some(name => name.includes('.install-'))).toBe(false)
+  })
+
+  test('installs an unwrapped-layout bundle without a top-level directory unchanged', async () => {
+    const fingerprint = skillFingerprint({ 'SKILL.md': '# Demo' })
+    globalThis.fetch = installFetch({ 'SKILL.md': '# Demo' })
+    const home = await mkdtemp(join(tmpdir(), 'skillhub-install-home-'))
+    const rootDir = await mkdtemp(join(tmpdir(), 'skillhub-install-root-'))
+    const skillDir = join(rootDir, 'demo')
+
+    await installSkill({
+      registry: 'http://registry.test',
+      namespace: 'global',
+      slug: 'demo',
+      targets: [{ agent: 'codex', rootDir, scope: 'project', source: 'explicit' }],
+      force: false,
+      home
+    })
+
+    const metadata = JSON.parse(await readFile(join(skillDir, '.skillhub', 'metadata.json'), 'utf-8'))
+    expect(await readFile(join(skillDir, 'SKILL.md'), 'utf-8')).toBe('# Demo')
+    expect(metadata.fingerprint).toBe(fingerprint)
+    expect(Object.keys(metadata.files)).toEqual(['SKILL.md'])
+  })
+
+  test('accepts a bundle wrapped in a single top-level directory when the unwrapped fingerprint matches', async () => {
+    const fingerprint = skillFingerprint({ 'SKILL.md': '# Demo', 'scripts/run.sh': 'echo', '.hidden': 'h' })
+    globalThis.fetch = installFetch({ 'demo/SKILL.md': '# Demo', 'demo/scripts/run.sh': 'echo', 'demo/.hidden': 'h' }, fingerprint)
+    const home = await mkdtemp(join(tmpdir(), 'skillhub-install-home-'))
+    const rootDir = await mkdtemp(join(tmpdir(), 'skillhub-install-root-'))
+    const skillDir = join(rootDir, 'demo')
+
+    await installSkill({
+      registry: 'http://registry.test',
+      namespace: 'global',
+      slug: 'demo',
+      targets: [{ agent: 'codex', rootDir, scope: 'project', source: 'explicit' }],
+      force: false,
+      home
+    })
+
+    expect(await readFile(join(skillDir, 'SKILL.md'), 'utf-8')).toBe('# Demo')
+    expect(await readFile(join(skillDir, 'scripts', 'run.sh'), 'utf-8')).toBe('echo')
+    expect(await readFile(join(skillDir, '.hidden'), 'utf-8')).toBe('h')
+    expect(await exists(join(skillDir, 'demo'))).toBe(false)
+    expect((await readdir(skillDir)).some(name => name.startsWith('.skillhub-unwrap-'))).toBe(false)
+    expect((await readdir(rootDir)).some(name => name.includes('.install-'))).toBe(false)
+    const metadata = JSON.parse(await readFile(join(skillDir, '.skillhub', 'metadata.json'), 'utf-8'))
+    expect(metadata.fingerprint).toBe(fingerprint)
+    expect(Object.keys(metadata.files).sort()).toEqual(['.hidden', 'SKILL.md', 'scripts/run.sh'])
+    const inventory = JSON.parse(await readFile(join(home, '.skillhub', 'inventory.json'), 'utf-8'))
+    expect(inventory.items[0].targets[0].installDir).toBe(skillDir)
+  })
+
+  test('unwraps a top-level directory that contains an entry with the same name', async () => {
+    const fingerprint = skillFingerprint({ 'SKILL.md': '# Demo', 'demo/notes.md': 'n' })
+    globalThis.fetch = installFetch({ 'demo/SKILL.md': '# Demo', 'demo/demo/notes.md': 'n' }, fingerprint)
+    const home = await mkdtemp(join(tmpdir(), 'skillhub-install-home-'))
+    const rootDir = await mkdtemp(join(tmpdir(), 'skillhub-install-root-'))
+    const skillDir = join(rootDir, 'demo')
+
+    await installSkill({
+      registry: 'http://registry.test',
+      namespace: 'global',
+      slug: 'demo',
+      targets: [{ agent: 'codex', rootDir, scope: 'project', source: 'explicit' }],
+      force: false,
+      home
+    })
+
+    expect(await readFile(join(skillDir, 'SKILL.md'), 'utf-8')).toBe('# Demo')
+    expect(await readFile(join(skillDir, 'demo', 'notes.md'), 'utf-8')).toBe('n')
+    const metadata = JSON.parse(await readFile(join(skillDir, '.skillhub', 'metadata.json'), 'utf-8'))
+    expect(metadata.fingerprint).toBe(fingerprint)
+    expect(Object.keys(metadata.files).sort()).toEqual(['SKILL.md', 'demo/notes.md'])
+  })
+
+  test('rejects a wrapped bundle whose unwrapped fingerprint still mismatches', async () => {
+    globalThis.fetch = installFetch({ 'demo/SKILL.md': '# Demo' }, 'sha256:unexpected')
+    const home = await mkdtemp(join(tmpdir(), 'skillhub-install-home-'))
+    const rootDir = await mkdtemp(join(tmpdir(), 'skillhub-install-root-'))
+
+    await expect(installSkill({
+      registry: 'http://registry.test',
+      namespace: 'global',
+      slug: 'demo',
+      targets: [{ agent: 'codex', rootDir, scope: 'project', source: 'explicit' }],
+      force: false,
+      home
+    })).rejects.toMatchObject({
+      exitCode: EXIT.validation,
+      message: 'downloaded skill fingerprint does not match the resolved release',
+      details: {
+        expectedFingerprint: 'sha256:unexpected',
+        actualFingerprint: skillFingerprint({ 'demo/SKILL.md': '# Demo' })
+      }
+    })
+
+    expect(await exists(join(rootDir, 'demo'))).toBe(false)
+    expect((await readdir(rootDir)).some(name => name.includes('.install-'))).toBe(false)
+  })
+
+  test('does not unwrap a bundle with more than one top-level entry', async () => {
+    globalThis.fetch = installFetch({ 'demo/SKILL.md': '# Demo', 'README.md': 'r' }, skillFingerprint({ 'SKILL.md': '# Demo' }))
+    const home = await mkdtemp(join(tmpdir(), 'skillhub-install-home-'))
+    const rootDir = await mkdtemp(join(tmpdir(), 'skillhub-install-root-'))
+
+    await expect(installSkill({
+      registry: 'http://registry.test',
+      namespace: 'global',
+      slug: 'demo',
+      targets: [{ agent: 'codex', rootDir, scope: 'project', source: 'explicit' }],
+      force: false,
+      home
+    })).rejects.toMatchObject({
+      exitCode: EXIT.validation,
+      message: 'downloaded skill fingerprint does not match the resolved release',
+      details: {
+        expectedFingerprint: skillFingerprint({ 'SKILL.md': '# Demo' }),
+        actualFingerprint: skillFingerprint({ 'README.md': 'r', 'demo/SKILL.md': '# Demo' })
+      }
+    })
+
+    expect(await exists(join(rootDir, 'demo'))).toBe(false)
   })
 
   test('rejects canonical target aliases before writing any installation', async () => {

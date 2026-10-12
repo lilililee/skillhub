@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { mkdir, mkdtemp, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import { SkillHubClient } from '../clients/skillhub-client'
 import { InventoryStore, InventoryVersionConflictError } from '../stores/inventory-store'
@@ -7,7 +8,7 @@ import { EXIT } from '../shared/constants'
 import { extractZip } from '../platform/archive'
 import { readBoundedResponseBody } from '../platform/download'
 import { canonicalizeExistingPath, pathExists } from '../platform/paths'
-import { diffSkillFiles, snapshotSkillDirectory } from './skill-fingerprint'
+import { diffSkillFiles, snapshotSkillDirectory, type SkillSnapshot } from './skill-fingerprint'
 import {
   readInstalledSkillMetadata,
   sameInstalledSkillSource,
@@ -93,6 +94,47 @@ async function preflightInstallTargets(
   return preparedTargets
 }
 
+// Some registries package the bundle under a single top-level directory while
+// computing the release fingerprint from the unwrapped layout. Accept that layout
+// only when the unwrapped content matches the resolved fingerprint exactly.
+async function snapshotDownloadedSkill(
+  tempDir: string,
+  expectedFingerprint: string
+): Promise<{ snapshot: SkillSnapshot; rawFingerprint: string; matched: boolean }> {
+  const raw = await snapshotSkillDirectory(tempDir)
+  if (raw.fingerprint === expectedFingerprint) {
+    return { snapshot: raw, rawFingerprint: raw.fingerprint, matched: true }
+  }
+
+  const entries = (await readdir(tempDir, { withFileTypes: true })).filter(entry => entry.name !== '.skillhub')
+  const [onlyEntry] = entries
+  if (entries.length !== 1 || !onlyEntry || !onlyEntry.isDirectory()) {
+    return { snapshot: raw, rawFingerprint: raw.fingerprint, matched: false }
+  }
+
+  const nested = await snapshotSkillDirectory(join(tempDir, onlyEntry.name))
+  if (nested.fingerprint !== expectedFingerprint) {
+    return { snapshot: raw, rawFingerprint: raw.fingerprint, matched: false }
+  }
+
+  await unwrapSingleTopLevelDirectory(tempDir, onlyEntry.name)
+  const unwrapped = await snapshotSkillDirectory(tempDir)
+  return { snapshot: unwrapped, rawFingerprint: raw.fingerprint, matched: unwrapped.fingerprint === expectedFingerprint }
+}
+
+// Move the wrapper out of the way first so entries that share its name
+// (for example `demo/demo/...`) can be moved to the root without conflicts.
+async function unwrapSingleTopLevelDirectory(tempDir: string, childName: string): Promise<void> {
+  const unwrapDir = join(tempDir, `.skillhub-unwrap-${randomUUID()}`)
+  await rename(join(tempDir, childName), unwrapDir)
+  for (const name of await readdir(unwrapDir)) {
+    // Nested installer metadata is not part of the fingerprint; the installer writes its own.
+    if (name === '.skillhub') continue
+    await rename(join(unwrapDir, name), join(tempDir, name))
+  }
+  await rm(unwrapDir, { recursive: true, force: true })
+}
+
 export async function installSkill(options: InstallOptions): Promise<InstallResult> {
   const store = new InventoryStore(options.home)
   const inventory = await store.read()
@@ -117,12 +159,12 @@ export async function installSkill(options: InstallOptions): Promise<InstallResu
         await extractZip(buffer, tempDir)
 
         const installedAt = new Date().toISOString()
-        const snapshot = await snapshotSkillDirectory(tempDir)
-        if (snapshot.fingerprint !== resolved.fingerprint) {
+        const { snapshot, rawFingerprint, matched } = await snapshotDownloadedSkill(tempDir, resolved.fingerprint)
+        if (!matched) {
           throw new CliError('downloaded skill fingerprint does not match the resolved release', EXIT.validation, {
             coordinate: `@${options.namespace}/${options.slug}`,
             expectedFingerprint: resolved.fingerprint,
-            actualFingerprint: snapshot.fingerprint,
+            actualFingerprint: rawFingerprint,
             next: 'retry the install after the registry release has been verified'
           })
         }

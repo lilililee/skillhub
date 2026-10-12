@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'bun:test'
 import { zipSync, strToU8 } from 'fflate'
@@ -91,6 +92,43 @@ describe('install command — P0', () => {
       (t: { installDir: string }) => t.installDir === join(installDir, 'pdf-parser')
     )
     expect(target).toBeDefined()
+  })
+
+  test('installs a bundle wrapped in a top-level directory at <dir>/<slug>/', async () => {
+    const env = await createTempHome()
+    const content = '# wrapped skill'
+    const fileHash = createHash('sha256').update(content).digest('hex')
+    // The registry fingerprint is computed from the unwrapped layout.
+    const fingerprint = `sha256:${createHash('sha256').update(`SKILL.md:${fileHash}\n`, 'utf8').digest('hex')}`
+    registry = await startFakeRegistry({
+      token: 'sk_ok',
+      user: { handle: 'u1', displayName: 'User One' },
+      skills: [
+        {
+          namespace: 'global',
+          slug: 'pdf-parser',
+          version: '1.0.0',
+          versionId: 1,
+          fingerprint,
+          zipBytes: zipSync({ 'pdf-parser/SKILL.md': strToU8(content) })
+        }
+      ]
+    })
+
+    const installDir = join(env.cwd, 'skills')
+    await mkdir(installDir, { recursive: true })
+
+    const result = await runCli(
+      ['install', 'pdf-parser', '--dir', installDir, '--registry', registry.url, '--token', 'sk_ok'],
+      { HOME: env.home, USERPROFILE: env.home }
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(await readFile(join(installDir, 'pdf-parser', 'SKILL.md'), 'utf-8')).toBe(content)
+    await expect(access(join(installDir, 'pdf-parser', 'pdf-parser'))).rejects.toThrow()
+    const meta = JSON.parse(await readFile(join(installDir, 'pdf-parser', '.skillhub', 'metadata.json'), 'utf-8'))
+    expect(meta.fingerprint).toBe(fingerprint)
+    expect(Object.keys(meta.files)).toEqual(['SKILL.md'])
   })
 
   // -------------------------------------------------------------------------
