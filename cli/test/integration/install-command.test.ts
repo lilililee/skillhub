@@ -228,7 +228,7 @@ describe('install command — P1', () => {
       port: 0,
       fetch(req) {
         const url = new URL(req.url)
-        const resolveMatch = url.pathname.match(/^\/api\/cli\/v1\/skills\/([^/]+)\/([^/]+)\/resolve$/)
+        const resolveMatch = url.pathname === '/api/cli/v1/skills/resolve' ? [url.pathname, url.searchParams.get('namespace'), url.searchParams.get('slug')] : null
         if (resolveMatch) {
           const auth = req.headers.get('authorization')
           resolveAuthHeaders.push(auth)
@@ -243,7 +243,7 @@ describe('install command — P1', () => {
               version: '1.0.0',
               versionId: 1,
               fingerprint: 'abc123',
-              downloadUrl: `${url.protocol}//${url.host}/api/cli/v1/skills/${resolveMatch[1]}/${resolveMatch[2]}/download`
+              downloadUrl: `${url.protocol}//${url.host}/api/cli/v1/skills/versions/download?namespace=${resolveMatch[1]}&slug=${resolveMatch[2]}`
             }
           })
         }
@@ -995,7 +995,7 @@ describe('install command — multi-agent & auto-detect', () => {
           return Response.json({ code: 0, data: { handle: 'u', displayName: 'U' } })
         }
         const baseUrl = `${url.protocol}//${url.host}`
-        const resolveMatch = url.pathname.match(/^\/api\/cli\/v1\/skills\/([^/]+)\/([^/]+)\/resolve$/)
+        const resolveMatch = url.pathname === '/api/cli/v1/skills/resolve' ? [url.pathname, url.searchParams.get('namespace'), url.searchParams.get('slug')] : null
         if (resolveMatch && req.method === 'GET') {
           return Response.json({
             code: 0,
@@ -1005,7 +1005,7 @@ describe('install command — multi-agent & auto-detect', () => {
               version: '1.0.0',
               versionId: 1,
               fingerprint: 'deadbeef',
-              downloadUrl: `${baseUrl}/api/cli/v1/skills/${resolveMatch[1]}/${resolveMatch[2]}/versions/1.0.0/download`
+              downloadUrl: `${baseUrl}/api/cli/v1/skills/versions/download?namespace=${resolveMatch[1]}&slug=${resolveMatch[2]}&version=1.0.0`
             }
           })
         }

@@ -282,7 +282,7 @@ export async function startFakeRegistry(options: FakeRegistryOptions = {}) {
 
   // Helper: build the download URL that resolve returns.
   function buildDownloadUrl(baseUrl: string, namespace: string, slug: string, version: string): string {
-    return `${baseUrl}/api/cli/v1/skills/${namespace}/${slug}/versions/${version}/download`
+    return `${baseUrl}/api/cli/v1/skills/versions/download?${new URLSearchParams({ namespace, slug, version })}`
   }
 
   const server = Bun.serve({
@@ -382,13 +382,12 @@ export async function startFakeRegistry(options: FakeRegistryOptions = {}) {
       // Route: /api/cli/v1/skills/:namespace/:slug/...
       // ------------------------------------------------------------------ //
 
-      // Resolve: GET /api/cli/v1/skills/:namespace/:slug/resolve
-      const resolveMatch = path.match(/^\/api\/cli\/v1\/skills\/([^/]+)\/([^/]+)\/resolve$/)
-      if (resolveMatch && req.method === 'GET') {
+      // Resolve: GET /api/cli/v1/skills/resolve?namespace=&slug=&version=
+      if (path === '/api/cli/v1/skills/resolve' && req.method === 'GET') {
         state.resolves++
         if (options.failures?.resolve) return failureResponse(options.failures.resolve)
-        const namespace = resolveMatch[1]!
-        const slug = resolveMatch[2]!
+        const namespace = url.searchParams.get('namespace') ?? ''
+        const slug = url.searchParams.get('slug') ?? ''
         state.resolve = {
           namespace,
           slug,
@@ -413,12 +412,11 @@ export async function startFakeRegistry(options: FakeRegistryOptions = {}) {
         })
       }
 
-      // Download (latest): GET /api/cli/v1/skills/:namespace/:slug/download
-      const downloadLatestMatch = path.match(/^\/api\/cli\/v1\/skills\/([^/]+)\/([^/]+)\/download$/)
-      if (downloadLatestMatch && req.method === 'GET') {
+      // Download: GET /api/cli/v1/skills/versions/download?namespace=&slug=&version=
+      if (path === '/api/cli/v1/skills/versions/download' && req.method === 'GET') {
         if (options.failures?.download) return failureResponse(options.failures.download)
-        const namespace = downloadLatestMatch[1]!
-        const slug = downloadLatestMatch[2]!
+        const namespace = url.searchParams.get('namespace') ?? ''
+        const slug = url.searchParams.get('slug') ?? ''
         const skill = findSkill(namespace, slug)
         if (!skill) {
           return Response.json({ code: 404, message: 'not found' }, { status: 404 })
@@ -430,27 +428,6 @@ export async function startFakeRegistry(options: FakeRegistryOptions = {}) {
           headers: { 'Content-Type': 'application/zip' }
         })
       }
-
-      // Download (versioned): GET /api/cli/v1/skills/:namespace/:slug/versions/:version/download
-      const downloadVersionedMatch = path.match(
-        /^\/api\/cli\/v1\/skills\/([^/]+)\/([^/]+)\/versions\/([^/]+)\/download$/
-      )
-      if (downloadVersionedMatch && req.method === 'GET') {
-        if (options.failures?.download) return failureResponse(options.failures.download)
-        const namespace = downloadVersionedMatch[1]!
-        const slug = downloadVersionedMatch[2]!
-        const skill = findSkill(namespace, slug)
-        if (!skill) {
-          return Response.json({ code: 404, message: 'not found' }, { status: 404 })
-        }
-        state.downloads += 1
-        const bytes = skill.zipBytes ?? MINIMAL_ZIP
-        return new Response(bytes as BodyInit, {
-          status: 200,
-          headers: { 'Content-Type': 'application/zip' }
-        })
-      }
-
       // Delete: DELETE /api/cli/v1/skills/:namespace/:slug
       const deleteMatch = path.match(/^\/api\/cli\/v1\/skills\/([^/]+)\/([^/]+)$/)
       if (deleteMatch && req.method === 'DELETE') {

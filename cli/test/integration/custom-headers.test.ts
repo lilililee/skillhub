@@ -32,8 +32,8 @@ test('repeatable --header reaches authentication, resolve, download, search, and
       expect(result.exitCode).toBe(0)
     }
     expect(paths).toContain('/api/cli/v1/auth/whoami')
-    expect(paths).toContain('/api/cli/v1/skills/global/demo/resolve')
-    expect(paths).toContain('/api/cli/v1/skills/global/demo/versions/1.0.0/download')
+    expect(paths).toContain('/api/cli/v1/skills/resolve')
+    expect(paths).toContain('/api/cli/v1/skills/versions/download')
     const config = await readFile(join(env.home, '.skillhub', 'config.json'), 'utf8')
     const credentials = await readFile(join(env.home, '.skillhub', 'credentials.json'), 'utf8')
     expect(config + credentials).not.toContain('with:colon')

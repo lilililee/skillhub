@@ -206,7 +206,7 @@ describe('SkillHubClient', () => {
     }) as unknown as typeof fetch
     const client = new SkillHubClient('http://registry.test', 'token', fetchImpl)
     await client.resolve('ns', 'sk')
-    expect(capturedUrl).not.toContain('?version=')
+    expect(capturedUrl).toBe('http://registry.test/api/cli/v1/skills/resolve?namespace=ns&slug=sk')
   })
 
   test('resolve() with version includes query param', async () => {
@@ -219,7 +219,7 @@ describe('SkillHubClient', () => {
     }) as unknown as typeof fetch
     const client = new SkillHubClient('http://registry.test', 'token', fetchImpl)
     await client.resolve('ns', 'sk', '2.0.0')
-    expect(capturedUrl).toContain('?version=2.0.0')
+    expect(capturedUrl).toBe('http://registry.test/api/cli/v1/skills/resolve?namespace=ns&slug=sk&version=2.0.0')
   })
 
   test('listNamespaceSkills forwards cursor and limit', async () => {
@@ -500,8 +500,8 @@ describe('SkillHubClient', () => {
   test('builds the query-style download URL', async () => {
     const client = new SkillHubClient('http://registry.test/api/skillhub', 'token')
     expect(await client.downloadUrl('global', 'webull-issue-quick', '1.0.3'))
-      .toBe('http://registry.test/api/skillhub/v1/skills/versions/download?namespace=global&slug=webull-issue-quick&version=1.0.3')
+      .toBe('http://registry.test/api/skillhub/api/cli/v1/skills/versions/download?namespace=global&slug=webull-issue-quick&version=1.0.3')
     expect(await client.downloadUrl('global', 'demo'))
-      .toBe('http://registry.test/api/skillhub/v1/skills/versions/download?namespace=global&slug=demo')
+      .toBe('http://registry.test/api/skillhub/api/cli/v1/skills/versions/download?namespace=global&slug=demo')
   })
 })

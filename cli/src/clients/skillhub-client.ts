@@ -291,8 +291,9 @@ export class SkillHubClient {
   }
 
   async resolve(namespace: string, slug: string, version?: string): Promise<ResolveResponse> {
-    const params = version ? `?version=${encodeURIComponent(version)}` : ''
-    return this.getJson(`/skills/${namespace}/${slug}/resolve${params}`)
+    const params = new URLSearchParams({ namespace, slug })
+    if (version) params.set('version', version)
+    return this.getJson(`/skills/resolve?${params}`)
   }
 
   async listNamespaceSkills(namespace: string, cursor?: string, limit = 100): Promise<NamespaceSyncResponse> {
@@ -304,7 +305,7 @@ export class SkillHubClient {
   async downloadUrl(namespace: string, slug: string, version?: string): Promise<string> {
     const params = new URLSearchParams({ namespace, slug })
     if (version) params.set('version', version)
-    return `${this.registry}/v1/skills/versions/download?${params}`
+    return `${this.registry}/api/cli/v1/skills/versions/download?${params}`
   }
   async download(namespace: string, slug: string, version?: string): Promise<Response> {
     const url = await this.downloadUrl(namespace, slug, version)
